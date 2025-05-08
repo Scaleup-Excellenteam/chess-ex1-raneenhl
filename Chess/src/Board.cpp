@@ -12,6 +12,8 @@ Board::Board(const string& boardString, bool isWhiteTurn)
     parseBoardString(boardString);
 }
 
+Board::~Board() = default;
+
 void Board::parseBoardString(const string& boardString) {
     m_board.clear();
     for (int i = 0; i < 64; ++i) {

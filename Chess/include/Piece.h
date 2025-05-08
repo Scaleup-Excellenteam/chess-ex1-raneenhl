@@ -21,6 +21,12 @@ public:
   virtual bool isValidMove(int srcRow, int srcCol, int destRow, int destCol, const string& boardStr) const = 0;
   virtual char getSymbol() const = 0;
 
+  static bool isKingInCheck(bool white, const std::string& board);
+  static string simulateMove(int srcRow, int srcCol, int destRow, int destCol, const std::string& board);
+
+  static Piece* createPiece(char symbol);
+
+
 protected:
   bool isWhite;
 };
