@@ -1,6 +1,7 @@
 // Chess 
 #include "Chess.h"
 #include "Board.h"
+#include <MoveRecommender.h>
 
 int main()
 {
@@ -35,15 +36,28 @@ int main()
 		// If move was valid, update turn
         if (codeResponse == 41 || codeResponse == 42)
         {
-            Board* newBoard = new Board(boardEngine->toString(), !whiteTurn);
-			delete boardEngine;  // cleanup previous board
-			boardEngine = newBoard;
-			whiteTurn = !whiteTurn;
+            int fromRow = res[0] - 'a';
+            int fromCol = res[1] - '1';
+            int toRow = res[2] - 'a';
+            int toCol = res[3] - '1';
+
+            Board* newBoard = new Board(boardEngine->simulateMove(fromRow, fromCol, toRow, toCol));
+            delete boardEngine;
+            boardEngine = newBoard;
+            whiteTurn = !whiteTurn;
 		}
 		/**/
 
 		a.setCodeResponse(codeResponse);
 		res = a.getInput(); 
+
+		if (res != "exit")
+        {
+            MoveRecommender recommender(*boardEngine, 2);
+            recommender.calculateMoves(whiteTurn, 3);
+            cout << "\nTop recommended moves:\n";
+            cout << recommender << endl;
+        }
 	}
 	delete boardEngine;
 

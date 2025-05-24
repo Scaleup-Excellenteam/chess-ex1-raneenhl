@@ -62,3 +62,5 @@ Piece* Piece::createPiece(char symbol) {
         default: return nullptr;
     }
 }
+
+
