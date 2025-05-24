@@ -184,3 +184,35 @@ bool Board::hasAnyLegalMove(bool forWhite) {
 
     return false;  // no legal move avoids check → checkmate
 }
+
+char Board::getPieceSymbol(int row, int col) const {
+    auto it = m_board.find({row, col});
+    if (it != m_board.end()) {
+        return it->second->getSymbol();
+    }
+    return '#';  // empty square
+}
+
+Piece* Board::getPiece(int row, int col) const {
+    auto it = m_board.find({row, col});
+    return (it != m_board.end()) ? it->second.get() : nullptr;
+}
+
+void Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
+    m_board[{toRow, toCol}] = std::move(m_board[{fromRow, fromCol}]);
+    m_board.erase({fromRow, fromCol});
+}
+
+Board Board::simulateMove(int fromRow, int fromCol, int toRow, int toCol) const {
+    Board newBoard(this->toString(), m_turnWhite);
+    auto piece = newBoard.getPiece(fromRow, fromCol);
+    if (piece && piece->isValidMove(fromRow, fromCol, toRow, toCol, newBoard.toString())) {
+        newBoard.m_board[{toRow, toCol}] = std::move(newBoard.m_board[{fromRow, fromCol}]);
+        newBoard.m_board.erase({fromRow, fromCol});
+    }
+    return std::move(newBoard);  
+}
+
+const std::map<std::pair<int, int>, std::unique_ptr<Piece>>& Board::getPieces() const {
+    return m_board;
+}
