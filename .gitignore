@@ -1,5 +1,6 @@
 # Ignore build files and compiled binaries
 /build/
+Chess/build/
 /CMakeCache.txt
 /CMakeFiles/
 /*.o

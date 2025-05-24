@@ -1,7 +1,0 @@
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/CMakeFiles/Chess.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/CMakeFiles/edit_cache.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/CMakeFiles/rebuild_cache.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/include/CMakeFiles/edit_cache.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/include/CMakeFiles/rebuild_cache.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/src/CMakeFiles/edit_cache.dir
-/home/raneen/Excellenteam/Chess-CPP/chess-ex1-raneenhl/Chess/build/src/CMakeFiles/rebuild_cache.dir
