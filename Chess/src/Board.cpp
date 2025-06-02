@@ -12,6 +12,12 @@ Board::Board(const string& boardString, bool isWhiteTurn)
     parseBoardString(boardString);
 }
 
+Board::Board(const Board& other) : m_turnWhite(other.m_turnWhite) {
+    for (const auto& [pos, piece] : other.m_board) {
+        m_board[pos] = std::unique_ptr<Piece>(piece->clone());
+    }
+}
+
 Board::~Board() = default;
 
 void Board::parseBoardString(const string& boardString) {
@@ -21,7 +27,7 @@ void Board::parseBoardString(const string& boardString) {
         if (c == '#') continue;
 
         bool isWhite = isupper(c);
-        int row = i / 8;
+        int row = 7 - (i / 8);
         int col = i % 8;
 
         switch (tolower(c)) {
@@ -50,6 +56,7 @@ void Board::parseBoardString(const string& boardString) {
  pair<int, int> Board::parsePosition(char file, char rank) {
     return { 8 - (rank - '0'), file - 'a' };
 }
+
 int Board::validateMove(const string& input) {
     if (input.length() != 4)
         return 21;  // Invalid input
@@ -131,9 +138,10 @@ string Board::toString() const {
      string result(64, '#'); // Start with an empty board
 
     for (const auto& [pos, piece] : m_board) {
+        if (!piece) continue;
         int row = pos.first;
         int col = pos.second;
-        result[row * 8 + col] = piece->getSymbol();
+        if (piece) result[row * 8 + col] = piece->getSymbol();
     }
 
     return result;
@@ -187,7 +195,7 @@ bool Board::hasAnyLegalMove(bool forWhite) {
 
 char Board::getPieceSymbol(int row, int col) const {
     auto it = m_board.find({row, col});
-    if (it != m_board.end()) {
+    if (it != m_board.end() && it->second) {
         return it->second->getSymbol();
     }
     return '#';  // empty square
@@ -205,12 +213,19 @@ void Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
 
 Board Board::simulateMove(int fromRow, int fromCol, int toRow, int toCol) const {
     Board newBoard(this->toString(), m_turnWhite);
-    auto piece = newBoard.getPiece(fromRow, fromCol);
-    if (piece && piece->isValidMove(fromRow, fromCol, toRow, toCol, newBoard.toString())) {
-        newBoard.m_board[{toRow, toCol}] = std::move(newBoard.m_board[{fromRow, fromCol}]);
-        newBoard.m_board.erase({fromRow, fromCol});
-    }
-    return std::move(newBoard);  
+
+    // Get the piece from the original board
+    Piece* originalPiece = getPiece(fromRow, fromCol);
+    if (!originalPiece) return newBoard;  // Defensive: if no piece, just return unchanged board
+
+    // Clone the piece
+    std::unique_ptr<Piece> clonedPiece = originalPiece->clone();
+
+    // Move the cloned piece into the new board
+    newBoard.m_board[std::make_pair(toRow, toCol)] = std::move(clonedPiece);
+    newBoard.m_board.erase(std::make_pair(fromRow, fromCol));
+
+    return newBoard;
 }
 
 const std::map<std::pair<int, int>, std::unique_ptr<Piece>>& Board::getPieces() const {

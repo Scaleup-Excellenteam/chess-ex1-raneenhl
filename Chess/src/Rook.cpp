@@ -30,3 +30,7 @@ bool Rook::isValidMove(int fromRow, int fromCol, int toRow, int toCol, const  st
 
     return true;
 }
+
+std::unique_ptr<Piece> Rook::clone() const {
+    return std::make_unique<Rook>(*this);
+}

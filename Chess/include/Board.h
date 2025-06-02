@@ -24,10 +24,9 @@ class Board {
 public:
   Board();
   Board(const  string& boardString, bool isWhiteTurn);
+  Board(const Board& other);
   ~Board();
-  Board(Board&& other) noexcept = default;
   Board& operator=(Board&& other) noexcept = default;
-  Board(const Board&) = delete;
   Board& operator=(const Board&) = delete;
   int validateMove(const string& input); // returns codeResponse
   bool isKingInCheck(bool whiteKing) const;

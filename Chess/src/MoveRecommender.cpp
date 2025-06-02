@@ -1,5 +1,7 @@
 #include "MoveRecommender.h"
 #include <cmath>
+#include "ThreadPool.h"
+#include <mutex>
 
 MoveRecommender::MoveRecommender(Board &board, int maxDepth)
     : _board(board), _maxDepth(maxDepth) {}
@@ -39,8 +41,8 @@ bool MoveRecommender::isThreateningStrongerPiece(int x, int y, Board &board, boo
 }
 
 int MoveRecommender::evaluateMove(int fromX, int fromY, int toX, int toY, int depth, bool isWhiteTurn) {
-    if (!_board.getPiece(fromX, fromY) ||
-        !_board.getPiece(fromX, fromY)->isValidMove(fromX, fromY, toX, toY, _board.toString()))
+    Piece* piece = _board.getPiece(fromX, fromY);
+    if (!piece || !piece->isValidMove(fromX, fromY, toX, toY, _board.toString()))
         return -1;
 
     char captured = _board.getPieceSymbol(toX, toY);
@@ -72,31 +74,79 @@ int MoveRecommender::getBestMoveScore(Board &board, int depth, bool isWhiteTurn)
 }
 
 void MoveRecommender::calculateMoves(bool isWhiteTurn, int numMoves) {
+    stopFlag.store(false);  // Ensure flag is reset
+    ThreadPool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<void>> futures;
+
+    for (const auto& [pos, piecePtr] : _board.getPieces()) {
+        if (!piecePtr) continue;
+        Piece* piece = piecePtr.get();
+        if (!piece || piece->getIsWhite() != isWhiteTurn) continue;
+
+        futures.emplace_back(pool.enqueue([this, position = pos, isWhiteTurn]() {
+            for (int i = 0; i < 8 && !stopFlag.load(); ++i) {
+                for (int j = 0; j < 8 && !stopFlag.load(); ++j) {
+                    int score = evaluateMove(position.first, position.second, i, j, _maxDepth, isWhiteTurn);
+                    if (score >= 0) {
+                        std::string moveStr = toNotation(position.first, position.second) + toNotation(i, j);
+                        {
+                            std::lock_guard<std::mutex> lock(queueMutex);
+                            _topMoves.push(Move(moveStr, score));
+                        }
+                        if (score >= THRESHOLD_SCORE) {
+                            stopFlag.store(true);
+                            return;
+                        }
+                    }
+                }
+            }
+        }));
+    }
+
+    for (auto& f : futures) f.get();
+
+    while (_topMoves.size() > numMoves) {
+        _topMoves.poll();  // retain top N
+    }
+}
+
+void MoveRecommender::calculateMovesSingleThreaded(bool isWhiteTurn, int numMoves) {
+    stopFlag.store(false);
     for (const auto& [pos, piece] : _board.getPieces()) {
-        if (piece->getIsWhite() != isWhiteTurn) continue;
-        for (int i = 0; i < 8; ++i) {
-            for (int j = 0; j < 8; ++j) {
+        if (!piece || piece->getIsWhite() != isWhiteTurn) continue;
+        for (int i = 0; i < 8 && !stopFlag.load(); ++i) {
+            for (int j = 0; j < 8 && !stopFlag.load(); ++j) {
                 int score = evaluateMove(pos.first, pos.second, i, j, _maxDepth, isWhiteTurn);
                 if (score >= 0) {
                     std::string moveStr = toNotation(pos.first, pos.second) + toNotation(i, j);
-                    _topMoves.push(Move(moveStr, score));
+                    {
+                        std::lock_guard<std::mutex> lock(queueMutex);
+                        _topMoves.push(Move(moveStr, score));
+                    }
+                    if (score >= THRESHOLD_SCORE) {
+                        stopFlag.store(true);
+                        return;
+                    }
                 }
             }
         }
     }
-    // Keep only top N
-    while (_topMoves.size() > numMoves) _topMoves.poll();
+
+    while (_topMoves.size() > numMoves) {
+        _topMoves.poll();
+    }
 }
 
-const PriorityQueue<Move, MoveComparator> &MoveRecommender::getTopMoves() const {
+const PriorityQueue<Move, MoveComparator>& MoveRecommender::getTopMoves() const {
     return _topMoves;
 }
 
-std::ostream &operator<<(std::ostream &os, const MoveRecommender &recommender) {
-    PriorityQueue<Move, MoveComparator> temp = recommender._topMoves;
+std::ostream& operator<<(std::ostream& os, const MoveRecommender& recommender) {
+    std::lock_guard<std::mutex> lock(recommender.queueMutex);
+    auto snapshot = recommender._topMoves.snapshot();
     int rank = 1;
-    while (!temp.empty()) {
-        os << rank++ << ". " << temp.poll() << '\n';
+    for (const auto& move : snapshot) {
+        os << rank++ << ". " << move << '\n';
     }
     return os;
 }

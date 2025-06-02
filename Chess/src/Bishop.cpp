@@ -28,3 +28,7 @@ bool Bishop::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const
 
     return true;
 }
+
+std::unique_ptr<Piece> Bishop::clone() const {
+    return std::make_unique<Bishop>(*this);
+}

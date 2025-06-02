@@ -4,6 +4,8 @@
 
 #pragma once
 #include <string>
+#include <memory>
+
 
 using namespace std;
 
@@ -26,6 +28,7 @@ public:
 
   static Piece* createPiece(char symbol);
 
+  virtual std::unique_ptr<Piece> clone() const = 0;
 
 protected:
   bool isWhite;

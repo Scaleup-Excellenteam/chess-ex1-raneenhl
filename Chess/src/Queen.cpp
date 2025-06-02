@@ -29,3 +29,7 @@ bool Queen::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const 
 
     return false; // invalid queen move
 }
+
+std::unique_ptr<Piece> Queen::clone() const {
+    return std::make_unique<Queen>(*this);
+}

@@ -4,6 +4,7 @@
 #include "PriorityQueue.h"
 #include "Move.h"
 #include <iostream>
+#include <atomic>
 
 class MoveRecommender;
 
@@ -14,6 +15,10 @@ private:
     Board &_board;
     int _maxDepth;
     PriorityQueue<Move, MoveComparator> _topMoves;
+    mutable std::mutex queueMutex;
+
+    std::atomic<bool> stopFlag = false;
+    static constexpr int THRESHOLD_SCORE = 500;
 
     // Scoring for the moves
     static const int CAPTURE_SCORE = 100;
@@ -38,4 +43,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const MoveRecommender &recommender);
 
     std::string toNotation(int row, int col);
+
+    void calculateMovesSingleThreaded(bool isWhiteTurn, int numMoves);
+
 };
