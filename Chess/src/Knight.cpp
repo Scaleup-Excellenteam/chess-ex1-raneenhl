@@ -11,3 +11,7 @@ bool Knight::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const
     int dCol = abs(destCol - srcCol);
     return (dRow == 2 && dCol == 1) || (dRow == 1 && dCol == 2);
 }
+
+std::unique_ptr<Piece> Knight::clone() const {
+    return std::make_unique<Knight>(*this);
+}

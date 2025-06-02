@@ -31,3 +31,7 @@ bool Pawn::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const  
 
     return false;
 }
+
+std::unique_ptr<Piece> Pawn::clone() const {
+    return std::make_unique<Pawn>(*this);
+}

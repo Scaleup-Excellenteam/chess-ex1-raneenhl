@@ -10,3 +10,7 @@ char King::getSymbol() const {
 bool King::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const string& boardStr) const {
 return abs(srcRow - destRow) <= 1 && abs(srcCol - destCol) <= 1;
 }
+
+std::unique_ptr<Piece> King::clone() const {
+    return std::make_unique<King>(*this);
+}

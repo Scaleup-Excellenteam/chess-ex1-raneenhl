@@ -9,5 +9,5 @@
     King.cpp
     Pawn.cpp
     Piece.cpp
-    ValidateMove.cpp 
+    MoveRecommender.cpp
 )

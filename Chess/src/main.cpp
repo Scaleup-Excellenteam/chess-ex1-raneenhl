@@ -1,7 +1,10 @@
 // Chess 
 #include "Chess.h"
 #include "Board.h"
-#include <MoveRecommender.h>
+#include "MoveRecommender.h"
+#include <chrono>
+
+void runBenchmarks(Board& board, int depth);
 
 int main()
 {
@@ -30,7 +33,6 @@ int main()
 		42 - the last movement was legal, next turn 
 		*/
 
-		/**/ 
 		codeResponse = boardEngine->validateMove(res);
 
 		// If move was valid, update turn
@@ -59,8 +61,37 @@ int main()
             cout << recommender << endl;
         }
 	}
-	delete boardEngine;
 
-	cout << endl << "Exiting " << endl; 
+	// Benchmark on final board state
+    int depth = 2;
+    std::cout << "\nRunning benchmarks...\n";
+    runBenchmarks(*boardEngine, depth);
+
+    delete boardEngine;
+    std::cout << "\nExiting\n";
+
 	return 0;
+}
+
+
+void runBenchmarks(Board& board, int depth) {
+    std::vector<int> threadCounts = {0, 2, 4, 8};
+
+    for (int threads : threadCounts) {
+        MoveRecommender recommender(board, depth);
+        auto start = std::chrono::high_resolution_clock::now();
+
+        if (threads == 0) {
+            // Single-threaded fallback (original)
+            recommender.calculateMovesSingleThreaded(true, 8);
+        } else {
+            recommender.calculateMoves(true, 8);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+
+        std::cout << "Threads: " << threads
+                  << " — Time: " << duration.count() << " seconds" << std::endl;
+    }
 }
