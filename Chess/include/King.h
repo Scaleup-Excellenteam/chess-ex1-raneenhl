@@ -4,6 +4,7 @@
 
 #pragma once
 #include "Piece.h"
+#include "Board.h"
 #include <string>
 #include <memory>
 
@@ -20,6 +21,7 @@ public:
 
   std::unique_ptr<Piece> clone() const override;
 
-};
+  bool isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const;
 
+};
 

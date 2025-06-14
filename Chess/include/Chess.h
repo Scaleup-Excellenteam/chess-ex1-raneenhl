@@ -40,4 +40,5 @@ public:
 	Chess& operator=(const Chess&) = delete;
 	string getInput();
 	void setCodeResponse(int codeResponse);
+	void setTurn(bool turn);
 };

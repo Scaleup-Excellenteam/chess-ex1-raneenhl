@@ -15,3 +15,7 @@ bool Knight::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const
 std::unique_ptr<Piece> Knight::clone() const {
     return std::make_unique<Knight>(*this);
 }
+
+bool Knight::isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const {
+    return isValidMove(fromRow, fromCol, toRow, toCol, board.toString());
+}

@@ -5,8 +5,8 @@
 #include <vector>
 #include "CustomExeptions.h"
 
-// Generic priority queue with comparator
-// T: item type, Comparator: function object returning int (a - b style)
+// Generic priority queue using a list and custom comparator
+// Comparator should return positive if a > b, 0 if equal, negative if a < b
 template <typename T, typename Comparator>
 class PriorityQueue {
 private:
@@ -16,6 +16,22 @@ private:
 
 public:
     PriorityQueue() = default;
+
+    // Copy constructor
+    PriorityQueue(const PriorityQueue& other) {
+        std::lock_guard<std::mutex> lock(other._mutex);
+        _elements = other._elements;
+    }
+
+    // Copy assignment
+    PriorityQueue& operator=(const PriorityQueue& other) {
+        if (this != &other) {
+            std::lock_guard<std::mutex> lock1(_mutex);
+            std::lock_guard<std::mutex> lock2(other._mutex);
+            _elements = other._elements;
+        }
+        return *this;
+    }
 
     void push(const T& value) {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -48,16 +64,6 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         if (_elements.empty()) throw EmptyQueueException();
         return _elements.front();
-    }
-
-    typename std::list<T>::const_iterator begin() const {
-        std::lock_guard<std::mutex> lock(_mutex);
-        return _elements.begin();
-    }
-
-    typename std::list<T>::const_iterator end() const {
-        std::lock_guard<std::mutex> lock(_mutex);
-        return _elements.end();
     }
 
     std::vector<T> snapshot() const {

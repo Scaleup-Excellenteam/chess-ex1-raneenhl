@@ -35,3 +35,7 @@ bool Pawn::isValidMove(int srcRow, int srcCol, int destRow, int destCol, const  
 std::unique_ptr<Piece> Pawn::clone() const {
     return std::make_unique<Pawn>(*this);
 }
+
+bool Pawn::isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const {
+    return isValidMove(fromRow, fromCol, toRow, toCol, board.toString());
+}

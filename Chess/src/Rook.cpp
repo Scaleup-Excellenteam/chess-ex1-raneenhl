@@ -34,3 +34,7 @@ bool Rook::isValidMove(int fromRow, int fromCol, int toRow, int toCol, const  st
 std::unique_ptr<Piece> Rook::clone() const {
     return std::make_unique<Rook>(*this);
 }
+
+bool Rook::isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const {
+    return isValidMove(fromRow, fromCol, toRow, toCol, board.toString());
+}
