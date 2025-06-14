@@ -20,6 +20,8 @@ Board::Board(const Board& other) : m_turnWhite(other.m_turnWhite) {
 
 Board::~Board() = default;
 
+// Converts a 64-character board string into pieces on the internal board.
+// Format: top-left to bottom-right, using single-char symbols ('#' for empty).
 void Board::parseBoardString(const string& boardString) {
     m_board.clear();
     for (int i = 0; i < 64; ++i) {
@@ -57,6 +59,8 @@ void Board::parseBoardString(const string& boardString) {
     return { 8 - (rank - '0'), file - 'a' };
 }
 
+// Core move validation logic, including castling, promotion, and check detection.
+// Applies the move directly to the current board if valid.
 int Board::validateMove(const string& input) {
     if (input.length() != 4)
         return 21;  // Invalid input
@@ -76,38 +80,105 @@ int Board::validateMove(const string& input) {
     if (toIt != m_board.end() && toIt->second->getIsWhite() == m_turnWhite)
         return 13;  // Destination occupied by your own piece
 
-    if (!piece->isValidMove(fromRow, fromCol, toRow, toCol, toString()))
-        return 21;  // Invalid move for that piece
+    // --- CASTLING CHECK ---
+    if (tolower(piece->getSymbol()) == 'k' && !piece->getHasMoved()) {
+        int row = fromRow;
+        bool isWhite = piece->getIsWhite();
 
-    // Simulate move
+        // Short castling
+        if (fromCol == 4 && toCol == 6) {
+            auto rookIt = m_board.find({row, 7});
+            if (rookIt != m_board.end()) {
+                Piece* rook = rookIt->second.get();
+                if (tolower(rook->getSymbol()) == 'r' && !rook->getHasMoved()) {
+                    // Check if path is clear
+                    if (!m_board.count({row, 5}) && !m_board.count({row, 6})) {
+                        // Check if king passes through or lands in check
+                        Board copy1 = simulateMove(fromRow, fromCol, row, 5);
+                        Board copy2 = simulateMove(fromRow, fromCol, toRow, toCol);
+                        if (!isKingInCheck(m_turnWhite) &&
+                            !copy1.isKingInCheck(m_turnWhite) &&
+                            !copy2.isKingInCheck(m_turnWhite)) {
+                            // Execute castling
+                            m_board[{toRow, toCol}] = std::move(m_board[{fromRow, fromCol}]);
+                            m_board.erase({fromRow, fromCol});
+                            m_board[{row, 5}] = std::move(m_board[{row, 7}]);
+                            m_board.erase({row, 7});
+                            m_board[{toRow, toCol}]->setHasMoved(true);
+                            m_board[{row, 5}]->setHasMoved(true);
+                            return 42;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Long castling
+        if (fromCol == 4 && toCol == 2) {
+            auto rookIt = m_board.find({row, 0});
+            if (rookIt != m_board.end()) {
+                Piece* rook = rookIt->second.get();
+                if (tolower(rook->getSymbol()) == 'r' && !rook->getHasMoved()) {
+                    if (!m_board.count({row, 1}) && !m_board.count({row, 2}) && !m_board.count({row, 3})) {
+                        Board copy1 = simulateMove(fromRow, fromCol, row, 3);
+                        Board copy2 = simulateMove(fromRow, fromCol, toRow, toCol);
+                        if (!isKingInCheck(m_turnWhite) &&
+                            !copy1.isKingInCheck(m_turnWhite) &&
+                            !copy2.isKingInCheck(m_turnWhite)) {
+                            m_board[{toRow, toCol}] = std::move(m_board[{fromRow, fromCol}]);
+                            m_board.erase({fromRow, fromCol});
+                            m_board[{row, 3}] = std::move(m_board[{row, 0}]);
+                            m_board.erase({row, 0});
+                            m_board[{toRow, toCol}]->setHasMoved(true);
+                            m_board[{row, 3}]->setHasMoved(true);
+                            return 42;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Normal move ---
+    if (!piece->isValidMove(fromRow, fromCol, toRow, toCol, toString()))
+        return 21;
+
     auto movedPiece = move(m_board[{fromRow, fromCol}]);
     auto capturedPiece = m_board.count({toRow, toCol}) ? move(m_board[{toRow, toCol}]) : nullptr;
 
     m_board[{toRow, toCol}] = move(movedPiece);
-    m_board.erase({fromRow, fromCol});
+    m_board[{toRow, toCol}]->setHasMoved(true);
 
-    // Check if this move leaves your own king in check
-    if (isKingInCheck(m_turnWhite)) {
-        // Undo move
-        m_board[{fromRow, fromCol}] =  move(m_board[{toRow, toCol}]);
-        if (capturedPiece)
-            m_board[{toRow, toCol}] =  move(capturedPiece);
-        else
-            m_board.erase({toRow, toCol});
-
-        return 31;  // Move exposes own king to check
+    // Promotion
+    Piece* promoted = m_board[{toRow, toCol}].get();
+    if (tolower(promoted->getSymbol()) == 'p') {
+        if ((promoted->getIsWhite() && toRow == 0) || (!promoted->getIsWhite() && toRow == 7)) {
+            bool isWhite = promoted->getIsWhite();
+            m_board[{toRow, toCol}] = std::make_unique<Queen>(isWhite);
+            std::cout << (isWhite ? "White" : "Black") << " pawn promoted to queen!\n";
+        }
     }
 
-    // Check if opponent is in check after the move
+    m_board.erase({fromRow, fromCol});
+
+    if (isKingInCheck(m_turnWhite)) {
+        m_board[{fromRow, fromCol}] = move(m_board[{toRow, toCol}]);
+        if (capturedPiece)
+            m_board[{toRow, toCol}] = move(capturedPiece);
+        else
+            m_board.erase({toRow, toCol});
+        return 31;
+    }
+
     if (isKingInCheck(!m_turnWhite)) {
         if (!hasAnyLegalMove(!m_turnWhite)) {
             cout << "Checkmate! Game Over.\n";
-            return 41;  // Checkmate (also treated as check)
+            return 41;
         }
-        return 41;  // Just check
+        return 41;
     }
 
-    return 42;  // Legal move, no check
+    return 42;
 }
 
 bool Board::isKingInCheck(bool whiteKing) const {
@@ -209,6 +280,8 @@ Piece* Board::getPiece(int row, int col) const {
 void Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
     m_board[{toRow, toCol}] = std::move(m_board[{fromRow, fromCol}]);
     m_board.erase({fromRow, fromCol});
+    Piece* moved = getPiece(toRow, toCol);
+    if (moved) moved->setHasMoved(true);
 }
 
 Board Board::simulateMove(int fromRow, int fromCol, int toRow, int toCol) const {
@@ -221,13 +294,104 @@ Board Board::simulateMove(int fromRow, int fromCol, int toRow, int toCol) const 
     // Clone the piece
     std::unique_ptr<Piece> clonedPiece = originalPiece->clone();
 
+    if (tolower(clonedPiece->getSymbol()) == 'p') {
+        if ((clonedPiece->getIsWhite() && toRow == 0) || (!clonedPiece->getIsWhite() && toRow == 7)) {
+            newBoard.m_board[{toRow, toCol}] = std::make_unique<Queen>(clonedPiece->getIsWhite());
+        }
+    }
+
     // Move the cloned piece into the new board
     newBoard.m_board[std::make_pair(toRow, toCol)] = std::move(clonedPiece);
     newBoard.m_board.erase(std::make_pair(fromRow, fromCol));
+
+    Piece* moved = getPiece(toRow, toCol);
+    if (moved) moved->setHasMoved(true);
 
     return newBoard;
 }
 
 const std::map<std::pair<int, int>, std::unique_ptr<Piece>>& Board::getPieces() const {
     return m_board;
+}
+
+bool Board::isLegalMove(int fromRow, int fromCol, int toRow, int toCol, bool isWhiteTurn) const {
+    if (!isInBounds(fromRow, fromCol) || !isInBounds(toRow, toCol))
+        return false;
+
+    auto piece = getPiece(fromRow, fromCol);
+    if (!piece || piece->getIsWhite() != isWhiteTurn)
+        return false;
+
+    // Destination occupied by same color
+    auto destPiece = getPiece(toRow, toCol);
+    if (destPiece && destPiece->getIsWhite() == isWhiteTurn)
+        return false;
+
+    if (!piece->isLegalMove(fromRow, fromCol, toRow, toCol, *this))
+        return false;
+
+    // Simulate the move and check if king is in check
+    Board simulated = simulateMove(fromRow, fromCol, toRow, toCol);
+    if (simulated.isKingInCheck(isWhiteTurn))
+        return false;
+
+    return true;
+}
+
+bool Board::isInBounds(int row, int col) const {
+    return row >= 0 && row < 8 && col >= 0 && col < 8;
+}
+
+void Board::setTurn(bool isWhite) {
+    this->m_turnWhite = isWhite;  
+}
+
+bool Board::getTurn() const { 
+    return m_turnWhite; 
+}
+
+bool Board::isInCheck(bool isWhite) const {
+    return isKingInCheck(isWhite);
+}
+
+bool Board::isInCheckmate(bool isWhite) {
+    // Not in check  →  certainly not check-mate
+    if (!isInCheck(isWhite))
+        return false;
+
+    /*  Try every legal move of every piece belonging to the side that is in
+        check.  If *any* move gets us out of check, it is NOT check-mate.      */
+    for (const auto& [fromPos, piecePtr] : m_board)
+    {
+        if (!piecePtr || piecePtr->getIsWhite() != isWhite)
+            continue;
+
+        int fromRow = fromPos.first;
+        int fromCol = fromPos.second;
+
+        for (int toRow = 0; toRow < 8; ++toRow)
+        {
+            for (int toCol = 0; toCol < 8; ++toCol)
+            {
+                // skip no-move and intra-colour captures fast
+                if (fromRow == toRow && fromCol == toCol)
+                    continue;
+
+                auto destIt = m_board.find({toRow, toCol});
+                if (destIt != m_board.end() && destIt->second->getIsWhite() == isWhite)
+                    continue;
+
+                /* Only analyse moves that are *legal* for that piece
+                   **on the current board**.                                */
+                if (!piecePtr->isValidMove(fromRow, fromCol, toRow, toCol, toString()))
+                    continue;
+
+                // Simulate and check if king still in check
+                Board after = simulateMove(fromRow, fromCol, toRow, toCol);
+                if (!after.isInCheck(isWhite))          // escape found
+                    return false;
+            }
+        }
+    }
+    return true;   // no escape moves → check-mate
 }
