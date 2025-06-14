@@ -327,3 +327,7 @@ void Chess::setCodeResponse(int codeResponse)
 		((41 == codeResponse) || (codeResponse == 42)))
 		m_codeResponse = codeResponse;
 }
+
+void Chess::setTurn(bool turn) {
+    m_turn = turn;
+}
