@@ -42,16 +42,26 @@ bool MoveRecommender::isThreateningStrongerPiece(int x, int y, Board &board, boo
 
 int MoveRecommender::evaluateMove(int fromX, int fromY, int toX, int toY, int depth, bool isWhiteTurn) {
     Piece* piece = _board.getPiece(fromX, fromY);
-    if (!piece || !piece->isValidMove(fromX, fromY, toX, toY, _board.toString()))
+    if (!piece || piece->getIsWhite() != isWhiteTurn ||
+        !piece->isValidMove(fromX, fromY, toX, toY, _board.toString()))
         return -1;
+
+    // Detect castling and reward it
+    if (tolower(piece->getSymbol()) == 'k' && !piece->getHasMoved()) {
+        string notation = toNotation(fromX, fromY) + toNotation(toX, toY);
+        int code = _board.validateMove(notation);
+        if (code == 42) return 50;  // successful castling
+    }
 
     char captured = _board.getPieceSymbol(toX, toY);
     Board simulated = _board.simulateMove(fromX, fromY, toX, toY);
     int score = 0;
 
     if (captured != '#') score += CAPTURE_SCORE;
-    if (isThreateningStrongerPiece(toX, toY, simulated, isWhiteTurn)) score += THREATENS_STRONGER_PIECE;
-    if (isPieceThreatenedByWeaker(toX, toY, simulated, isWhiteTurn)) score += UNDER_THREAT_BY_WEAKER;
+    if (isThreateningStrongerPiece(toX, toY, simulated, isWhiteTurn))
+        score += THREATENS_STRONGER_PIECE;
+    if (isPieceThreatenedByWeaker(toX, toY, simulated, isWhiteTurn))
+        score += UNDER_THREAT_BY_WEAKER;
 
     if (depth > 0)
         score -= getBestMoveScore(simulated, depth - 1, !isWhiteTurn);
@@ -73,17 +83,18 @@ int MoveRecommender::getBestMoveScore(Board &board, int depth, bool isWhiteTurn)
     return bestScore == -10000 ? 0 : bestScore;
 }
 
-void MoveRecommender::calculateMoves(bool isWhiteTurn, int numMoves) {
-    stopFlag.store(false);  // Ensure flag is reset
-    ThreadPool pool(std::thread::hardware_concurrency());
+void MoveRecommender::calculateMoves(bool isWhiteTurn, int numMoves, ThreadPool* pool) {
+    stopFlag.store(false);
+
+    ThreadPool localPool(std::thread::hardware_concurrency()); // for deafult 8 threads -> ThreadPool localPool(8);
+    ThreadPool* activePool = pool ? pool : &localPool;
+
     std::vector<std::future<void>> futures;
 
     for (const auto& [pos, piecePtr] : _board.getPieces()) {
-        if (!piecePtr) continue;
-        Piece* piece = piecePtr.get();
-        if (!piece || piece->getIsWhite() != isWhiteTurn) continue;
+        if (!piecePtr || piecePtr->getIsWhite() != isWhiteTurn) continue;
 
-        futures.emplace_back(pool.enqueue([this, position = pos, isWhiteTurn]() {
+        futures.emplace_back(activePool->enqueue([this, position = pos, isWhiteTurn]() {
             for (int i = 0; i < 8 && !stopFlag.load(); ++i) {
                 for (int j = 0; j < 8 && !stopFlag.load(); ++j) {
                     int score = evaluateMove(position.first, position.second, i, j, _maxDepth, isWhiteTurn);
@@ -106,7 +117,7 @@ void MoveRecommender::calculateMoves(bool isWhiteTurn, int numMoves) {
     for (auto& f : futures) f.get();
 
     while (_topMoves.size() > numMoves) {
-        _topMoves.poll();  // retain top N
+        _topMoves.poll();
     }
 }
 
