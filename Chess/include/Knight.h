@@ -2,6 +2,7 @@
 #define KNIGHT_H
 
 #include "Piece.h"
+#include "Board.h"
 #include <memory>
 
 
@@ -14,6 +15,8 @@ public:
     bool isValidMove(int srcRow, int srcCol, int destRow, int destCol, const std::string& boardStr) const override;
 
     std::unique_ptr<Piece> clone() const override;
+
+    bool isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const;
 
 };
 

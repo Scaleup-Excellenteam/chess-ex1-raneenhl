@@ -1,7 +1,9 @@
 #pragma once
 #include "Piece.h"
+#include "Board.h"
 #include <memory>
 
+// Represents a pawn piece. Implements forward movement, diagonal capture, and promotion logic.
 class Pawn : public Piece {
 public:
     Pawn(bool isWhite);
@@ -11,5 +13,8 @@ public:
     char getSymbol() const override;
 
     std::unique_ptr<Piece> clone() const override;
+
+    bool isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const;
+
 
 };

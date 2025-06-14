@@ -4,6 +4,7 @@
 
 #pragma once
 #include "Piece.h"
+#include "Board.h"
 #include <memory>
 
 
@@ -17,6 +18,8 @@ public:
     char getSymbol() const override;
 
     std::unique_ptr<Piece> clone() const override;
+
+    bool isLegalMove(int fromRow, int fromCol, int toRow, int toCol, const Board& board) const;
 
 };
 
